@@ -107,7 +107,7 @@ namespace steambridge
             {
                 close(SteamExitReason.NonEnglishCharachers);
             }
-            else if (line.Equals("FAILED with result code 5"))
+            else if (line.Equals("FAILED with result code 5") | line.Equals("Login with cached credentials FAILED with result code 5"))
             {
                 LoginFailed?.Invoke(this, LoginFailReason.WrongInformation);
             }
@@ -123,6 +123,10 @@ namespace steambridge
             {
                 LoginFailed?.Invoke(this, LoginFailReason.ExpiredCode);
             }
+            else if (line.Equals("FAILED with result code 84"))
+            {
+                LoginFailed?.Invoke(this, LoginFailReason.RateLimitedExceeded);
+            }
             else if (line.Contains("using 'set_steam_guard_code'") | line.Contains("Enter the current code from your Steam Guard Mobile Authenticator app"))
             {
                 LoginFailed?.Invoke(this, LoginFailReason.SteamGuardNotSupported);
@@ -132,7 +136,7 @@ namespace steambridge
             {
                 LoginFailed?.Invoke(this, LoginFailReason.AlreadyLoggedIn);
             }
-            else if (line.Contains("Waiting for license info...OK"))
+            else if (LoginState == false & (line.Contains("Waiting for license info...OK") | line.Contains("Logged in OK")))
             {
                 LoginState = true;
                 LoggedIn(this);
@@ -175,7 +179,40 @@ namespace steambridge
 
 
 
+        public bool tryInstallOrUpdateLoginCredentialsFromSteamClient()
+        {
+           DirectoryInfo localUnturned = Utils.getLocalUnturnedInstallation();
+            if (localUnturned == null)
+            {
+                return false;
+            }
+            else
+            {
+                try
+                {
+                    FileInfo src = new FileInfo(localUnturned.FullName + "\\config\\config.vdf");
+                    FileInfo dest = new FileInfo(SteamExeFile.Directory.FullName + "\\config\\config.vdf");
 
+                    if (!dest.Directory.Exists)
+                    {
+                        dest.Directory.Create();
+                    }
+
+                    if (dest.Exists)
+                    {
+                        dest.Delete();
+                    }
+                    
+                    File.WriteAllBytes(dest.FullName, File.ReadAllBytes(src.FullName));
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    return false;
+                }
+            }
+        }
 
 
         public Task close(SteamExitReason reason = SteamExitReason.NothingSpecial)
@@ -195,7 +232,16 @@ namespace steambridge
             return task;
         }
 
-
+        public static void killAll()
+        {
+            foreach(Process p in Process.GetProcessesByName("steamcmd"))
+            {
+                try
+                {
+                    p.Kill();
+                } catch (Exception) { }
+            }
+        }
 
     }
 

@@ -12,11 +12,11 @@ namespace steambridge
     {
         public static DirectoryInfo getLocalUnturnedInstallation()
         {
-            RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 304930");
+            RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Steam");
             try
             {
-                string value = (string)key.GetValue("InstallLocation", null);
-                return new DirectoryInfo(value);
+                string value = (string)key.GetValue("UninstallString", null);
+                return new FileInfo(value).Directory;
             }
             catch (Exception)
             {

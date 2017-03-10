@@ -20,8 +20,8 @@ namespace steambridge
 
                 Steam.StandardInput.WriteLine(command);
                 Steam.StandardInput.Flush();
-                Steam.StandardInput.WriteLine(Steam.StandardInput.NewLine);
-                Steam.StandardInput.Flush();
+                //Steam.StandardInput.WriteLine(Steam.StandardInput.NewLine);
+                //Steam.StandardInput.Flush();
             }
         }
 
@@ -52,49 +52,89 @@ namespace steambridge
             sendCommand("login anonymous");
         }
 
-        public bool loginAnonymous()
+        public void loginUseCache(string username)
         {
-            bool _loggedin = false;
-            bool canceled = true;
-
-            ManualResetEvent waitForResult = null;
-
-            LoggedIn success = (sender) => 
-            {
-                canceled = false;
-                LoginState = true;
-                waitForResult.Set();
-            };
-            LoginFailed failed = (sender, reason) => 
-            {
-                canceled = false;
-                waitForResult.Set();
-            };
-
-
-            LoggedIn += success;
-            LoginFailed += failed;
-            
-            do
-            {
-                canceled = true;
-                waitForResult = new ManualResetEvent(false);
-
-                loginAnonymous();
-                waitForResult.WaitOne();
-            }
-            while (!_loggedin & !canceled);
-
-            LoggedIn -= success;
-            LoginFailed -= failed;
-
-            return LoginState;
+            sendCommand(string.Format("login {0}"));
         }
 
+        public bool loginAnonymous(int timeout = 2000)
+        {
+            return login(null, null, timeout);
+        }
+
+        public void loginAsync(string username, string password)
+        {
+            sendCommand(string.Format("login {0} {1}",username,password));
+        }
+        
+        public bool login(string username = null, string password = "", int timeout = 20000)
+        {
+            var source = new CancellationTokenSource();
+            source.CancelAfter(timeout);
+
+            return Task.Run(() =>
+            {
+                bool _loggedin = false;
+                bool canceled = true;
+
+                ManualResetEvent waitForResult = null;
+
+                LoggedIn success = (sender) => { canceled = false; _loggedin = true; waitForResult.Set(); };
+
+                LoginFailed failed = (sender, r) => {
+                    switch (r)
+                    {
+                        case LoginFailReason.RateLimitedExceeded:
+                            canceled = true;
+                            break;
+                        case LoginFailReason.WrongInformation:
+                            canceled = true;
+                            break;
+                        case LoginFailReason.SteamGuardCodeWrong:
+                            canceled = true;
+                            break;
+                        case LoginFailReason.TwoFactorWrong:
+                            canceled = true;
+                            break;
+                        case LoginFailReason.ExpiredCode:
+                            canceled = true;
+                            break;
+                        case LoginFailReason.SteamGuardNotSupported:
+                            canceled = true;
+                            break;
+                        default:
+                            canceled = false;
+                            break;
+                    }
+                    waitForResult.Set();
+                };
+
+                LoggedIn += success;
+                LoginFailed += failed;
+
+                int i = 0;
+                do
+                {
+                    canceled = true;
+                    waitForResult = new ManualResetEvent(false);
+
+                    sendCommand(username == null ? "login anonymous" : string.Format("login {0}{1}", username, string.IsNullOrEmpty(" " + password) ? "" : password));
+                    waitForResult.WaitOne(timeout);
+                    i++;
+                }
+                while (!_loggedin & !canceled & !source.Token.IsCancellationRequested);
+                source.Dispose();
+
+                LoggedIn -= success;
+                LoginFailed -= failed;
 
 
-
+                return _loggedin;
+            }, source.Token).Result;
+        }
 
     }
+
+
 
 }

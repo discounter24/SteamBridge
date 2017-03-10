@@ -52,9 +52,16 @@
     <Compile Include="SteamInstance.cs" />
     <Compile Include="SteamInstanceCommands.cs" />
     <Compile Include="Utils.cs" />
+    <Compile Include="VDF\NestedElement.cs" />
+    <Compile Include="VDF\NestedElementFile.cs" />
+    <Compile Include="VDF\SteamAccount.cs" />
+    <Compile Include="VDF\SteamConfigFile.cs" />
+    <Compile Include="VDF\VDFElement.cs" />
+    <Compile Include="VDF\VDFFile.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

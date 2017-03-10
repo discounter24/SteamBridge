@@ -9,6 +9,7 @@ namespace steambridge
 
     public enum LoginFailReason
     {
+        RateLimitedExceeded,
         WrongInformation,
         SteamGuardCodeWrong,
         TwoFactorWrong,

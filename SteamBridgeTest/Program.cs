@@ -16,15 +16,26 @@ namespace SteamBridgeTest
             if (!installer.Installed)
             {
                 installer.installSteam();
+
+                new SteamInstance(new System.IO.FileInfo(installer.Folder.FullName + "\\steamcmd.exe")).close().Wait();
+
             }
 
+            SteamInstance.killAll();
             SteamInstance instance = new SteamInstance(new System.IO.FileInfo(installer.Folder.FullName + "\\steamcmd.exe"));
             instance.SteamOutput += Instance_SteamOutput;
 
-            Console.WriteLine("Started!");
+            Console.WriteLine(instance.tryInstallOrUpdateLoginCredentialsFromSteamClient());
+            Console.WriteLine("Login..");
+            Console.WriteLine(instance.login("discounter24"));
+
+            //Console.WriteLine(instance.login("deventuretech9", "$openPassword$").ToString());
+
+            Console.WriteLine("Done!");
+            Console.ReadKey();
             instance.close();
 
-            Console.ReadKey();
+         
         }
 
         private static void Instance_SteamOutput(object sender, string text)
