@@ -118,7 +118,7 @@ namespace steambridge
                     canceled = true;
                     waitForResult = new ManualResetEvent(false);
 
-                    sendCommand(username == null ? "login anonymous" : string.Format("login {0}{1}", username, string.IsNullOrEmpty(" " + password) ? "" : password));
+                    sendCommand(username == null ? "login anonymous" : string.Format("login {0}{1}", username, string.IsNullOrEmpty(" " + password) ? "" : " " + password));
                     waitForResult.WaitOne(timeout);
                     i++;
                 }
