@@ -1,6 +1,6 @@
 ## SteamBridge .NET
-This is a library that helps you to communicate with Steam using [SteamCMD](https://developer.valvesoftware.com/wiki/SteamCMD)
-It's perfect to create and manage servers for steam games.
+This is a library that helps you to communicate with Steam using [SteamCMD](https://developer.valvesoftware.com/wiki/SteamCMD).
+It is perfect to create and manage servers for steam games.
 
 ### Features
 + Automated installation process the SteamCMD
