@@ -139,7 +139,7 @@ namespace steambridge
             else if (LoginState == false & (line.Contains("Waiting for license info...OK") | line.Contains("Logged in OK")))
             {
                 LoginState = true;
-                LoggedIn(this);
+                LoggedIn?.Invoke(this);
             }
             else if (Regex.IsMatch(line, "ERROR! Download item [0-9]+ failed (Access Denied)."))
             {
