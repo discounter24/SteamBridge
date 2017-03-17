@@ -24,4 +24,11 @@ namespace steambridge
         NonEnglishCharachers
     }
 
+    public enum UpdateStateStage
+    {
+        Validating,
+        Downloading,
+        Commiting
+    }
+
 }

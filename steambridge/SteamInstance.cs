@@ -149,6 +149,20 @@ namespace steambridge
             {
                 AppUpdated?.Invoke(true);
             }
+            else if (Regex.IsMatch(line, @"Update state \(0x5\) validating, progress: ([0-9]+)\.([0-9]+) \(([0-9]+) / ([0-9]+)\)"))
+            {
+                Regex pattern = new Regex(@"Update state \(0x5\) validating, progress: ([0-9]+)\.([0-9]+) \(([0-9]+) / ([0-9]+)\)");
+                Match match = pattern.Match(line);
+
+
+                SteamAppUpdateState state = new SteamAppUpdateState();
+                state.percentage = Convert.ToInt32(match.Groups[1].Value);
+                state.receivedBytes = Convert.ToInt64(match.Groups[3].Value);
+                state.totalBytes = Convert.ToInt64(match.Groups[4].Value);
+                state.stage = UpdateStateStage.Validating;
+
+                AppUpdateStateChanged?.Invoke(this, state);
+            }
             else if (Regex.IsMatch(line, @"Update state \(0x61\) downloading, progress: ([0-9]+)\.([0-9]+) \(([0-9]+) / ([0-9]+)\)"))
             {
                 Regex pattern = new Regex(@"Update state \(0x61\) downloading, progress: ([0-9]+)\.([0-9]+) \(([0-9]+) / ([0-9]+)\)");
@@ -159,16 +173,31 @@ namespace steambridge
                 state.percentage = Convert.ToInt32(match.Groups[1].Value);
                 state.receivedBytes = Convert.ToInt64(match.Groups[3].Value);
                 state.totalBytes = Convert.ToInt64(match.Groups[4].Value);
+                state.stage = UpdateStateStage.Downloading;
+
+                AppUpdateStateChanged?.Invoke(this, state);
+            }
+            else if (Regex.IsMatch(line, @"Update state \(0x81\) commiting, progress: ([0-9]+)\.([0-9]+) \(([0-9]+) / ([0-9]+)\)"))
+            {
+                Regex pattern = new Regex(@"Update state \(0x81\) commiting, progress: ([0-9]+)\.([0-9]+) \(([0-9]+) / ([0-9]+)\)");
+                Match match = pattern.Match(line);
+
+
+                SteamAppUpdateState state = new SteamAppUpdateState();
+                state.percentage = Convert.ToInt32(match.Groups[1].Value);
+                state.receivedBytes = Convert.ToInt64(match.Groups[3].Value);
+                state.totalBytes = Convert.ToInt64(match.Groups[4].Value);
+                state.stage = UpdateStateStage.Commiting;
 
                 AppUpdateStateChanged?.Invoke(this, state);
             }
             else if (line.Contains("Success! App '") & line.Contains("' fully installed."))
             {
-                AppUpdated?.Invoke(this, true);
+                AppUpdated?.Invoke(this);
             }
             else if (line.Contains("Success! App '") & line.Contains("' already up to date."))
             {
-                AppUpdated?.Invoke(this, false);
+                AppUpdated?.Invoke(this);
             }
             else if (line.Contains("Success. Downloaded item") & line.Contains("bytes"))
             {
@@ -249,9 +278,12 @@ namespace steambridge
 
     public class SteamAppUpdateState
     {
+        public UpdateStateStage stage;
         public int percentage = 0;
         public long receivedBytes = 0;
         public long totalBytes = 0;
     }
+
+
 
 }
