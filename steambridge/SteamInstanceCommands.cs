@@ -20,8 +20,8 @@ namespace steambridge
 
                 Steam.StandardInput.WriteLine(command);
                 Steam.StandardInput.Flush();
-                //Steam.StandardInput.WriteLine(Steam.StandardInput.NewLine);
-                //Steam.StandardInput.Flush();
+                Steam.StandardInput.WriteLine(Steam.StandardInput.NewLine);
+                Steam.StandardInput.Flush();
             }
         }
 
@@ -57,68 +57,47 @@ namespace steambridge
             sendCommand(string.Format("login {0}"));
         }
 
-        public bool loginAnonymous(int timeout = 2000)
+        public LoginResult loginAnonymous(int timeout = 2000)
         {
-            return login(null, null, timeout);
+            return login(null, null, null, timeout);
         }
 
         public void loginAsync(string username, string password)
         {
             sendCommand(string.Format("login {0} {1}",username,password));
         }
-        
-        public bool login(string username = null, string password = "", int timeout = 20000)
+
+        public LoginResult login(string username = null, string password = "", string steamguard = "", int timeout = 20000)
         {
             var source = new CancellationTokenSource();
             source.CancelAfter(timeout);
 
-            return Task.Run(() =>
+            return Task<LoginResult>.Run(() =>
             {
                 bool _loggedin = false;
                 bool canceled = true;
 
                 ManualResetEvent waitForResult = null;
+                LoginResult result = LoginResult.Timeout;
 
-                LoggedIn success = (sender) => { canceled = false; _loggedin = true; waitForResult.Set(); };
+                LoggedIn success = (sender) => { canceled = false; result = LoginResult.OK; _loggedin = true; waitForResult.Set(); };
 
                 LoginFailed failed = (sender, r) => {
-                    switch (r)
-                    {
-                        case LoginFailReason.RateLimitedExceeded:
-                            canceled = true;
-                            break;
-                        case LoginFailReason.WrongInformation:
-                            canceled = true;
-                            break;
-                        case LoginFailReason.SteamGuardCodeWrong:
-                            canceled = true;
-                            break;
-                        case LoginFailReason.TwoFactorWrong:
-                            canceled = true;
-                            break;
-                        case LoginFailReason.ExpiredCode:
-                            canceled = true;
-                            break;
-                        case LoginFailReason.SteamGuardNotSupported:
-                            canceled = true;
-                            break;
-                        default:
-                            canceled = false;
-                            break;
-                    }
+                    result = r;
                     waitForResult.Set();
                 };
 
                 LoggedIn += success;
                 LoginFailed += failed;
 
+              
                 int i = 0;
                 do
                 {
                     canceled = true;
                     waitForResult = new ManualResetEvent(false);
 
-                    sendCommand(username == null ? "login anonymous" : string.Format("login {0}{1}", username, string.IsNullOrEmpty(" " + password) ? "" : " " + password));
+                    sendCommand(username == null ? "login anonymous" : string.Format("login {0}{1}{2}", username, string.IsNullOrEmpty(" " + password) ? "" : " " + password, string.IsNullOrEmpty(" " + steamguard) ? "" : " " + steamguard));
                     waitForResult.WaitOne(timeout);
                     i++;
                 }
@@ -129,7 +108,7 @@ namespace steambridge
                 LoginFailed -= failed;
 
 
-                return _loggedin;
+                return result;
             }, source.Token).Result;
         }
 
