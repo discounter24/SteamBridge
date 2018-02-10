@@ -17,7 +17,7 @@ namespace steambridge
 
     public delegate void LoggedIn(object sender);
 
-    public delegate void LoginFailed(object sender, LoginFailReason reason);
+    public delegate void LoginFailed(object sender, LoginResult reason);
 
     public delegate void AppUpdated(object sender, bool error = false);
     public delegate void AppUpdateStateChanged(object sender, SteamAppUpdateState state);
@@ -57,7 +57,7 @@ namespace steambridge
 
 
 
-        private void start()
+        private void start(bool asAdmin = false)
         {
             Steam = new Process();
             Steam.StartInfo.FileName = SteamExeFile.FullName;
@@ -71,10 +71,12 @@ namespace steambridge
 
             Steam.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 
+            if (asAdmin) Steam.StartInfo.Verb = "runas";
 
-            Steam.StartInfo.Verb = "runas";
 
             Steam.Start();
+
+            Steam.EnableRaisingEvents = true;
 
             Steam.ErrorDataReceived += Steam_DataReceived;
             Steam.OutputDataReceived += Steam_DataReceived;
@@ -109,32 +111,35 @@ namespace steambridge
             }
             else if (line.Equals("FAILED with result code 5") | line.Equals("Login with cached credentials FAILED with result code 5"))
             {
-                LoginFailed?.Invoke(this, LoginFailReason.WrongInformation);
+                LoginFailed?.Invoke(this, LoginResult.WrongInformation);
             }
             else if (line.Equals("FAILED with result code 88"))
             {
-                LoginFailed?.Invoke(this, LoginFailReason.TwoFactorWrong);
+                LoginFailed?.Invoke(this, LoginResult.TwoFactorWrong);
             }
             else if (line.Equals("FAILED with result code 65"))
             {
-                LoginFailed?.Invoke(this, LoginFailReason.SteamGuardCodeWrong);
+                LoginFailed?.Invoke(this, LoginResult.SteamGuardCodeWrong);
             }
             else if (line.Equals("FAILED with result code 71"))
             {
-                LoginFailed?.Invoke(this, LoginFailReason.ExpiredCode);
+                LoginFailed?.Invoke(this, LoginResult.ExpiredCode);
             }
             else if (line.Equals("FAILED with result code 84"))
             {
-                LoginFailed?.Invoke(this, LoginFailReason.RateLimitedExceeded);
+                LoginFailed?.Invoke(this, LoginResult.RateLimitedExceeded);
             }
-            else if (line.Contains("using 'set_steam_guard_code'") | line.Contains("Enter the current code from your Steam Guard Mobile Authenticator app"))
+            else if (line.Contains("using 'set_steam_guard_code'"))
             {
-                LoginFailed?.Invoke(this, LoginFailReason.SteamGuardNotSupported);
-
+                LoginFailed?.Invoke(this, LoginResult.SteamGuardNotSupported);
+            }
+            else if (line.Contains("Enter the current code from your Steam Guard Mobile Authenticator app"))
+            {
+                LoginFailed?.Invoke(this, LoginResult.WaitingForSteamGuard);
             }
             else if (line.Contains("FAILED with result code 50"))
             {
-                LoginFailed?.Invoke(this, LoginFailReason.AlreadyLoggedIn);
+                LoginFailed?.Invoke(this, LoginResult.AlreadyLoggedIn);
             }
             else if (LoginState == false & (line.Contains("Waiting for license info...OK") | line.Contains("Logged in OK")))
             {
@@ -207,8 +212,7 @@ namespace steambridge
         }
 
 
-
-        public bool tryInstallOrUpdateLoginCredentialsFromSteamClient()
+        public bool tryGetSteamLogin()
         {
            DirectoryInfo localUnturned = Utils.getLocalUnturnedInstallation();
             if (localUnturned == null)
@@ -219,20 +223,29 @@ namespace steambridge
             {
                 try
                 {
-                    FileInfo src = new FileInfo(localUnturned.FullName + "\\config\\config.vdf");
-                    FileInfo dest = new FileInfo(SteamExeFile.Directory.FullName + "\\config\\config.vdf");
 
-                    if (!dest.Directory.Exists)
+                    List<string> files = new List<string>();
+                    files.Add("\\config\\config.vdf");
+                    files.Add("\\config\\loginusers.vdf");
+
+
+                    foreach(string cfile in files)
                     {
-                        dest.Directory.Create();
+
+                        FileInfo src = new FileInfo(localUnturned.FullName + cfile);
+                        FileInfo dest = new FileInfo(SteamExeFile.Directory.FullName +  cfile);
+
+                        if (!dest.Directory.Exists) dest.Directory.Create();
+                        
+
+                        if (dest.Exists)
+                        {
+                            dest.Delete();
+                        }
+
+                        File.WriteAllBytes(dest.FullName, File.ReadAllBytes(src.FullName));
                     }
 
-                    if (dest.Exists)
-                    {
-                        dest.Delete();
-                    }
-                    
-                    File.WriteAllBytes(dest.FullName, File.ReadAllBytes(src.FullName));
 
                     return true;
                 }

@@ -22,7 +22,7 @@ namespace steambridge
 
         private readonly SteamBridgeWebClient Client;
 
-        ManualResetEvent waitSync;
+        private ManualResetEvent waitSync;
 
         public DirectoryInfo Folder
         {

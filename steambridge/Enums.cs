@@ -7,15 +7,18 @@ using System.Threading.Tasks;
 namespace steambridge
 {
 
-    public enum LoginFailReason
+    public enum LoginResult
     {
+        OK,
         RateLimitedExceeded,
         WrongInformation,
+        WaitingForSteamGuard,
         SteamGuardCodeWrong,
         TwoFactorWrong,
         ExpiredCode,
         AlreadyLoggedIn,
-        SteamGuardNotSupported
+        SteamGuardNotSupported,
+        Timeout
     }
 
     public enum SteamExitReason
