@@ -27,41 +27,56 @@ namespace SteamBridgeTest
             SteamInstance.killAll();
             SteamInstance instance = new SteamInstance(new System.IO.FileInfo(installer.Folder.FullName + "\\steamcmd.exe"));
             instance.SteamOutput += Instance_SteamOutput;
-            instance.LoggedIn += Instance_LoggedIn;
+            instance.LoginCallback += Instance_LoginCallback;
 
 
          
             Console.WriteLine("Please enter your steam-username:");
             string username = Console.ReadLine();
-            Console.WriteLine("Please enter your password:");
-            string password = Console.ReadLine();
 
-            LoginResult r = instance.login(username, password);
-            if (r == LoginResult.WaitingForSteamGuard)
+            if (instance.login(username,"") != LoginResult.OK)
             {
-                Console.WriteLine("Please enter your steam guard code:");
-                string code = Console.ReadLine();
-                Console.WriteLine(instance.login(username, password, code));
-            }
-            else
-            {
-                Console.WriteLine("Result: " + r.ToString());
+                instance.close().Wait();
+                instance.SteamOutput -= Instance_SteamOutput;
+                instance = new SteamInstance(new System.IO.FileInfo(installer.Folder.FullName + "\\steamcmd.exe"));
+                instance.SteamOutput += Instance_SteamOutput;
+
+                Console.WriteLine("Please enter your password:");
+                string password = Console.ReadLine();
+
+                LoginResult r = instance.login(username, password);
+
+
+                if (r == LoginResult.WaitingForSteamGuard)
+                {
+                    Console.WriteLine("Please enter your steam guard code:");
+                    string code = Console.ReadLine();
+                    Console.WriteLine(instance.login(username, password, code));
+                }
+                else
+                {
+                    Console.WriteLine("Result: " + r.ToString());
+                }
             }
 
-            instance.SteamOutput -= Instance_SteamOutput;
+
+
+          
             Console.WriteLine("Press return to exit..");
             Console.ReadLine();
+
+            instance.SteamOutput -= Instance_SteamOutput;
 
             instance.close();
 
 
-         
         }
 
-        private static void Instance_LoggedIn(object sender)
+        private static void Instance_LoginCallback(object sender, LoginResult reason)
         {
-            
+            if (reason == LoginResult.OK) ((SteamInstance)sender).updateApp(304930, "unturned");
         }
+
 
         private static void Instance_SteamOutput(object sender, string text)
         {

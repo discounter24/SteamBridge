@@ -17,10 +17,9 @@ namespace steambridge
         {
             if (Steam != null)
             {
-
                 Steam.StandardInput.WriteLine(command);
                 Steam.StandardInput.Flush();
-                Steam.StandardInput.WriteLine(Steam.StandardInput.NewLine);
+                Steam.StandardInput.WriteLine(" " + Steam.StandardInput.NewLine);
                 Steam.StandardInput.Flush();
             }
         }
@@ -80,17 +79,15 @@ namespace steambridge
                 ManualResetEvent waitForResult = null;
                 LoginResult result = LoginResult.Timeout;
 
-                LoggedIn success = (sender) => { canceled = false; result = LoginResult.OK; _loggedin = true; waitForResult.Set(); };
-
-                LoginFailed failed = (sender, r) => {
+             
+                LoginCallback callback = (sender, r) => {
+                    _loggedin = r == LoginResult.OK;
                     result = r;
                     waitForResult.Set();
                 };
 
-                LoggedIn += success;
-                LoginFailed += failed;
+                LoginCallback += callback;
 
-              
                 int i = 0;
                 do
                 {
@@ -104,8 +101,7 @@ namespace steambridge
                 while (!_loggedin & !canceled & !source.Token.IsCancellationRequested);
                 source.Dispose();
 
-                LoggedIn -= success;
-                LoginFailed -= failed;
+                LoginCallback -= callback;
 
 
                 return result;

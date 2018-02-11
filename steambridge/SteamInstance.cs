@@ -15,9 +15,7 @@ namespace steambridge
     public delegate void SteamStarted(object sender);
     public delegate void SteamExited(object sender, SteamExitReason reason);
 
-    public delegate void LoggedIn(object sender);
-
-    public delegate void LoginFailed(object sender, LoginResult reason);
+    public delegate void LoginCallback(object sender, LoginResult reason);
 
     public delegate void AppUpdated(object sender, bool error = false);
     public delegate void AppUpdateStateChanged(object sender, SteamAppUpdateState state);
@@ -30,8 +28,7 @@ namespace steambridge
 
         public event AppUpdated AppUpdated;
         public event SteamExited SteamExited;
-        public event LoggedIn LoggedIn;
-        public event LoginFailed LoginFailed;
+        public event LoginCallback LoginCallback;
         public event SteamOutput SteamOutput;
         public event ModDownloaded ModDownloaded;
         public event AppUpdateStateChanged AppUpdateStateChanged;
@@ -78,12 +75,32 @@ namespace steambridge
 
             Steam.EnableRaisingEvents = true;
 
-            Steam.ErrorDataReceived += Steam_DataReceived;
-            Steam.OutputDataReceived += Steam_DataReceived;
+
+            Task.Run(() =>
+            {
+                while(!Steam.HasExited)
+                {
+                    try
+                    {
+                        Steam_DataReceived(Steam,Steam.StandardOutput.ReadLine());
+                    }
+                    catch (Exception)
+                    {
+
+                        Task.Delay(100);
+                        continue;
+                    }
+                }
+
+
+            });
+
+            //Steam.ErrorDataReceived += Steam_DataReceived;
+            //Steam.OutputDataReceived += Steam_DataReceived;
             Steam.Exited += Steam_Exited;
 
-            Steam.BeginErrorReadLine();
-            Steam.BeginOutputReadLine();
+            //Steam.BeginErrorReadLine();
+            //Steam.BeginOutputReadLine();
 
             waitStartAsync.WaitOne();
         }
@@ -93,10 +110,10 @@ namespace steambridge
             SteamExited?.Invoke(this,SteamExitReason.NothingSpecial);
         }
 
-        private void Steam_DataReceived(object sender, DataReceivedEventArgs e)
+        private void Steam_DataReceived(object sender, string e)
         {
-            if (string.IsNullOrEmpty(e.Data)) return;
-            string line = e.Data;
+            if (string.IsNullOrEmpty(e)) return;
+            string line = e;
 
             SteamOutput?.Invoke(this, line);
 
@@ -111,40 +128,40 @@ namespace steambridge
             }
             else if (line.Equals("FAILED with result code 5") | line.Equals("Login with cached credentials FAILED with result code 5"))
             {
-                LoginFailed?.Invoke(this, LoginResult.WrongInformation);
+                LoginCallback?.Invoke(this, LoginResult.WrongInformation);
             }
             else if (line.Equals("FAILED with result code 88"))
             {
-                LoginFailed?.Invoke(this, LoginResult.TwoFactorWrong);
+                LoginCallback?.Invoke(this, LoginResult.TwoFactorWrong);
             }
             else if (line.Equals("FAILED with result code 65"))
             {
-                LoginFailed?.Invoke(this, LoginResult.SteamGuardCodeWrong);
+                LoginCallback?.Invoke(this, LoginResult.SteamGuardCodeWrong);
             }
             else if (line.Equals("FAILED with result code 71"))
             {
-                LoginFailed?.Invoke(this, LoginResult.ExpiredCode);
+                LoginCallback?.Invoke(this, LoginResult.ExpiredCode);
             }
             else if (line.Equals("FAILED with result code 84"))
             {
-                LoginFailed?.Invoke(this, LoginResult.RateLimitedExceeded);
+                LoginCallback?.Invoke(this, LoginResult.RateLimitedExceeded);
             }
             else if (line.Contains("using 'set_steam_guard_code'"))
             {
-                LoginFailed?.Invoke(this, LoginResult.SteamGuardNotSupported);
+                LoginCallback?.Invoke(this, LoginResult.SteamGuardNotSupported);
             }
             else if (line.Contains("Enter the current code from your Steam Guard Mobile Authenticator app"))
             {
-                LoginFailed?.Invoke(this, LoginResult.WaitingForSteamGuard);
+                LoginCallback?.Invoke(this, LoginResult.WaitingForSteamGuard);
             }
             else if (line.Contains("FAILED with result code 50"))
             {
-                LoginFailed?.Invoke(this, LoginResult.AlreadyLoggedIn);
+                LoginCallback?.Invoke(this, LoginResult.AlreadyLoggedIn);
             }
             else if (LoginState == false & (line.Contains("Waiting for license info...OK") | line.Contains("Logged in OK")))
             {
                 LoginState = true;
-                LoggedIn?.Invoke(this);
+                LoginCallback?.Invoke(this, LoginResult.OK);
             }
             else if (Regex.IsMatch(line, "ERROR! Download item [0-9]+ failed (Access Denied)."))
             {
