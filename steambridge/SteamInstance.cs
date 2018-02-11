@@ -38,7 +38,7 @@ namespace steambridge
 
         private ManualResetEvent waitStartAsync = new ManualResetEvent(false);
 
-
+        
         public bool LoginState
         {
             get;
@@ -50,6 +50,12 @@ namespace steambridge
         {
             this.SteamExeFile = pSteamExeFile;
             start();
+        }
+
+        public void reset(bool asAdmin = false)
+        {
+            close(SteamExitReason.NothingSpecial,1000).Wait();
+            start(asAdmin);
         }
 
 
@@ -78,19 +84,24 @@ namespace steambridge
 
             Task.Run(() =>
             {
-                while(!Steam.HasExited)
+                try
                 {
-                    try
+                    while (!Steam.HasExited)
                     {
-                        Steam_DataReceived(Steam,Steam.StandardOutput.ReadLine());
-                    }
-                    catch (Exception)
-                    {
+                        try
+                        {
+                            Steam_DataReceived(Steam, Steam.StandardOutput.ReadLine());
+                        }
+                        catch (Exception)
+                        {
 
-                        Task.Delay(100);
-                        continue;
+                            Task.Delay(100);
+                            continue;
+                        }
                     }
                 }
+                catch (Exception) {  }
+
 
 
             });
@@ -132,7 +143,7 @@ namespace steambridge
             }
             else if (line.Equals("FAILED with result code 88"))
             {
-                LoginCallback?.Invoke(this, LoginResult.TwoFactorWrong);
+                LoginCallback?.Invoke(this, LoginResult.SteamGuardCodeWrong);
             }
             else if (line.Equals("FAILED with result code 65"))
             {
@@ -274,14 +285,14 @@ namespace steambridge
         }
 
 
-        public Task close(SteamExitReason reason = SteamExitReason.NothingSpecial)
+        public Task close(SteamExitReason reason = SteamExitReason.NothingSpecial, int timeout = 15000)
         {
             var task = Task.Run(() =>
             {
                 sendCommand("logout");
                 sendCommand("exit");
 
-                if (!Steam.WaitForExit(15000))
+                if (!Steam.WaitForExit(timeout))
                 {
                     Steam.Kill();
                 }

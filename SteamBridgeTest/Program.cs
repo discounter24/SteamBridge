@@ -18,6 +18,7 @@ namespace SteamBridgeTest
                 Console.WriteLine("Preparing steamcmd..");
                 installer.installSteam();
                 SteamInstance _ = new SteamInstance(new System.IO.FileInfo(installer.Folder.FullName + "\\steamcmd.exe"));
+                _.SteamOutput += (sender, e) => { Console.WriteLine(e); };
                 _.tryGetSteamLogin();
                 _.close().Wait();
 
@@ -27,7 +28,23 @@ namespace SteamBridgeTest
             SteamInstance.killAll();
             SteamInstance instance = new SteamInstance(new System.IO.FileInfo(installer.Folder.FullName + "\\steamcmd.exe"));
             instance.SteamOutput += Instance_SteamOutput;
-            instance.LoginCallback += Instance_LoginCallback;
+
+            SteamGameInstaller gameInstaller = new SteamGameInstaller(instance);
+
+            Console.WriteLine("Please enter your steam-username:");
+            string username = Console.ReadLine();
+            gameInstaller.Output += GameInstaller_Output;
+            gameInstaller.login(username);
+            gameInstaller.WaitingForPassword += GameInstaller_WaitingForPassword;
+            gameInstaller.WaitingForTwoFactor += GameInstaller_WaitingForTwoFactor;
+
+
+            while(true)
+            {
+                Task.Delay(100);
+            }
+
+            /*instance.LoginCallback += Instance_LoginCallback;
 
 
          
@@ -68,13 +85,30 @@ namespace SteamBridgeTest
             instance.SteamOutput -= Instance_SteamOutput;
 
             instance.close();
+            */
 
+        }
 
+        private static void GameInstaller_WaitingForTwoFactor(object sender, TwoFactorRequiredArgs e)
+        {
+            Console.WriteLine("Steam Guard Code:");
+            e.TwoFactorCode = Console.ReadLine();
+        }
+
+        private static void GameInstaller_WaitingForPassword(object sender, PasswordRequiredArgs e)
+        {
+            Console.WriteLine("Password:");
+            e.password = Console.ReadLine();
+        }
+
+        private static void GameInstaller_Output(object sender, string e)
+        {
+            
         }
 
         private static void Instance_LoginCallback(object sender, LoginResult reason)
         {
-            if (reason == LoginResult.OK) ((SteamInstance)sender).updateApp(304930, "unturned");
+           // if (reason == LoginResult.OK) ((SteamInstance)sender).updateApp(304930, "unturned");
         }
 
 

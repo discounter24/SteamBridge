@@ -14,11 +14,11 @@ namespace steambridge
         WrongInformation,
         WaitingForSteamGuard,
         SteamGuardCodeWrong,
-        TwoFactorWrong,
         ExpiredCode,
         AlreadyLoggedIn,
         SteamGuardNotSupported,
-        Timeout
+        Timeout,
+        CanceledByUser
     }
 
     public enum SteamExitReason
