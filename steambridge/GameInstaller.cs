@@ -12,6 +12,10 @@ namespace steambridge
 
     public class SteamGameInstaller
     {
+
+        public event AppUpdateStateChanged AppUpdateStateChanged;
+        public event AppUpdated AppUpdated;
+
         public event EventHandler<PasswordRequiredArgs> WaitingForPassword;
         public event EventHandler<TwoFactorRequiredArgs> WaitingForTwoFactor;
         public event EventHandler<string> Output;
@@ -21,24 +25,16 @@ namespace steambridge
         public SteamGameInstaller(SteamInstance instance)
         {
             this.instance = instance;
-            instance.AppUpdateStateChanged += Instance_AppUpdateStateChanged;
-            instance.AppUpdated += Instance_AppUpdated;
         }
 
-        private void Instance_AppUpdated(object sender, bool error = false)
-        {
-            throw new NotImplementedException();
-        }
 
-        private void Instance_AppUpdateStateChanged(object sender, SteamAppUpdateState state)
-        {
-            throw new NotImplementedException();
-        }
 
         public Task<LoginResult> login(string username, string password = "", string code = "")
         {
             return Task<LoginResult>.Run(() =>
             {
+                if (instance.LoginState) return LoginResult.AlreadyLoggedIn;
+
                 bool cancel = false;
                 LoginResult result = instance.login(username,password,code);
                 if (result == LoginResult.WaitingForSteamGuard | result == LoginResult.SteamGuardCodeWrong)
@@ -92,11 +88,22 @@ namespace steambridge
         }
 
 
-        public void installGame(int id)
+        public void installGame(int id, string folder, bool validate = false)
         {
             if (instance.LoginState)
             {
+                instance.requestAppLicense(id);
 
+                instance.AppUpdateStateChanged += (sender, updateArgs) =>
+                {
+                    AppUpdateStateChanged?.Invoke(sender, updateArgs);
+                };
+                instance.AppUpdated += (sender, e) =>
+                {
+                    AppUpdated?.Invoke(sender, e);
+                };
+
+                instance.updateApp(id, folder, validate);
             }
             else
             {

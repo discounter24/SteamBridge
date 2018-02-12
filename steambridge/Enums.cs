@@ -31,7 +31,8 @@ namespace steambridge
     {
         Validating,
         Downloading,
-        Commiting
+        Commiting,
+        Preallocating
     }
 
 }

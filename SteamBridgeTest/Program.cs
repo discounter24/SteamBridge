@@ -4,14 +4,24 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using steambridge;
+using System.Diagnostics;
 
 namespace SteamBridgeTest
 {
     class Program
     {
+        static Stopwatch watch = new Stopwatch();
 
         static void Main(string[] args)
         {
+
+            Console.WriteLine("This tool will create a new steam and a new unturned installation on your computer at C:\\SteamTest\\ .");
+            Console.WriteLine("This will take about 4 gigabytes of your disk space.");
+            Console.WriteLine("We will start a stopwatch once you have logged into your steam account. Please tell us the time it shows when the installation completed.");
+            Console.WriteLine("Press any key to continue..");
+
+            Console.ReadKey();
+            watch.Start();
             SteamInstaller installer = new SteamInstaller("C:\\SteamTest\\");
             if (!installer.Installed)
             {
@@ -21,10 +31,9 @@ namespace SteamBridgeTest
                 _.SteamOutput += (sender, e) => { Console.WriteLine(e); };
                 _.tryGetSteamLogin();
                 _.close().Wait();
-
-
             }
 
+            Console.WriteLine("Connecting to steam..");
             SteamInstance.killAll();
             SteamInstance instance = new SteamInstance(new System.IO.FileInfo(installer.Folder.FullName + "\\steamcmd.exe"));
             instance.SteamOutput += Instance_SteamOutput;
@@ -34,59 +43,60 @@ namespace SteamBridgeTest
             Console.WriteLine("Please enter your steam-username:");
             string username = Console.ReadLine();
             gameInstaller.Output += GameInstaller_Output;
-            gameInstaller.login(username);
+            
             gameInstaller.WaitingForPassword += GameInstaller_WaitingForPassword;
             gameInstaller.WaitingForTwoFactor += GameInstaller_WaitingForTwoFactor;
 
-
-            while(true)
+            Console.WriteLine("Login..");
+            if (gameInstaller.login(username).Result == LoginResult.OK)
             {
-                Task.Delay(100);
-            }
+                gameInstaller.AppUpdateStateChanged += GameInstaller_AppUpdateStateChanged;
+                gameInstaller.AppUpdated += GameInstaller_AppUpdated;
+                gameInstaller.installGame(304930,"unturned",true);
 
-            /*instance.LoginCallback += Instance_LoginCallback;
-
-
-         
-            Console.WriteLine("Please enter your steam-username:");
-            string username = Console.ReadLine();
-
-            if (instance.login(username,"") != LoginResult.OK)
-            {
-                instance.close().Wait();
-                instance.SteamOutput -= Instance_SteamOutput;
-                instance = new SteamInstance(new System.IO.FileInfo(installer.Folder.FullName + "\\steamcmd.exe"));
-                instance.SteamOutput += Instance_SteamOutput;
-
-                Console.WriteLine("Please enter your password:");
-                string password = Console.ReadLine();
-
-                LoginResult r = instance.login(username, password);
-
-
-                if (r == LoginResult.WaitingForSteamGuard)
-                {
-                    Console.WriteLine("Please enter your steam guard code:");
-                    string code = Console.ReadLine();
-                    Console.WriteLine(instance.login(username, password, code));
-                }
-                else
-                {
-                    Console.WriteLine("Result: " + r.ToString());
-                }
+                instance.sendCommand("quit");
             }
 
 
+            string command = Console.ReadLine();
+            
+            while (!command.Equals("exit"))
+            {
+                instance.sendCommand(command);
+                Console.ReadLine();
+            }
+            
 
-          
-            Console.WriteLine("Press return to exit..");
-            Console.ReadLine();
+        }
 
-            instance.SteamOutput -= Instance_SteamOutput;
+        private static void GameInstaller_AppUpdated(object sender, bool error = false)
+        {
+            watch.Stop();
+            Console.WriteLine("Game ready!");
+            Console.WriteLine("It took " + watch.Elapsed.ToString() + " to get everything ready.");
+        }
 
-            instance.close();
-            */
+        private static void GameInstaller_AppUpdateStateChanged(object sender, SteamAppUpdateState state)
+        {
+            switch (state.stage)
+            {
+                case UpdateStateStage.Validating:
+                    Console.WriteLine(string.Format("Validating game files ({0}%)..", state.percentage));
+                    break;
+                case UpdateStateStage.Downloading:
+                    Console.WriteLine(string.Format("Downloading game files ({0}%)..", state.percentage));
+                    break;
+                case UpdateStateStage.Commiting:
+                    Console.WriteLine(string.Format("Commiting game files ({0}%)..", state.percentage));
+                    break;
+                case UpdateStateStage.Preallocating:
+                    Console.WriteLine(string.Format("Preparing game files ({0}%)..", state.percentage));
+                    break;
+                default:
+                    break;
+            }
 
+            
         }
 
         private static void GameInstaller_WaitingForTwoFactor(object sender, TwoFactorRequiredArgs e)
@@ -103,7 +113,7 @@ namespace SteamBridgeTest
 
         private static void GameInstaller_Output(object sender, string e)
         {
-            
+          
         }
 
         private static void Instance_LoginCallback(object sender, LoginResult reason)
@@ -114,7 +124,7 @@ namespace SteamBridgeTest
 
         private static void Instance_SteamOutput(object sender, string text)
         {
-            Console.WriteLine("[steamcmd] " + text);
+            //Console.WriteLine("[steamcmd] " + text);
         }
     }
 }

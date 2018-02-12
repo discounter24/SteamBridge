@@ -82,7 +82,7 @@ namespace steambridge
             Steam.EnableRaisingEvents = true;
 
 
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 try
                 {
@@ -90,12 +90,12 @@ namespace steambridge
                     {
                         try
                         {
-                            Steam_DataReceived(Steam, Steam.StandardOutput.ReadLine());
+                            string line = await Steam.StandardOutput.ReadLineAsync();
+                            Steam_DataReceived(Steam, line);
                         }
                         catch (Exception)
                         {
-
-                            Task.Delay(100);
+                            await Task.Delay(1000);
                             continue;
                         }
                     }
@@ -176,7 +176,7 @@ namespace steambridge
             }
             else if (Regex.IsMatch(line, "ERROR! Download item [0-9]+ failed (Access Denied)."))
             {
-                ModDownloaded?.Invoke(this,null);
+                ModDownloaded?.Invoke(this, null);
             }
             else if (Regex.IsMatch(line, "Error! App '[0-9]+' state is 0x[0-9]+ after update job."))
             {
@@ -223,6 +223,20 @@ namespace steambridge
                 state.stage = UpdateStateStage.Commiting;
 
                 AppUpdateStateChanged?.Invoke(this, state);
+            }
+            else if (Regex.IsMatch(line, @"Update state \(0x11\) preallocating, progress: ([0-9]+)\.([0-9]+) \(([0-9]+) / ([0-9]+)\)"))
+            {
+                Regex pattern = new Regex(@"Update state \(0x11\) preallocating, progress: ([0-9]+)\.([0-9]+) \(([0-9]+) / ([0-9]+)\)");
+                Match match = pattern.Match(line);
+
+
+                SteamAppUpdateState state = new SteamAppUpdateState();
+                state.percentage = Convert.ToInt32(match.Groups[1].Value);
+                state.receivedBytes = Convert.ToInt64(match.Groups[3].Value);
+                state.totalBytes = Convert.ToInt64(match.Groups[4].Value);
+                state.stage = UpdateStateStage.Preallocating;
+                AppUpdateStateChanged?.Invoke(this, state);
+
             }
             else if (line.Contains("Success! App '") & line.Contains("' fully installed."))
             {
